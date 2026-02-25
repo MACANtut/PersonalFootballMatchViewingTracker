@@ -1,432 +1,239 @@
 import sys
-from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-                               QGridLayout, QLabel, QLineEdit, 
-                               QPushButton, QMessageBox)
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
+                               QHBoxLayout, QPushButton, QLabel, QFrame)
 from PySide6.QtCore import Qt
 
-class RegistrationForm(QWidget):
-    def __init__(self, login_window):
-        super().__init__()
-        self.login_window = login_window
-        self.initUI()
-        
-    def initUI(self):
-        # Настройка окна
-        self.setWindowTitle("Регистрация")
-        self.setFixedSize(450, 500)
-        
-        # Установка зеленовато-бело-серой цветовой гаммы через CSS
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #e8f0e8;  /* Светлый зеленовато-серый фон */
-            }
-            QLabel {
-                color: #2c4c3b;  /* Темно-зеленый текст */
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QLineEdit {
-                background-color: #ffffff;  /* Белый фон полей */
-                border: 2px solid #9bb89b;  /* Зеленовато-серый бордер */
-                border-radius: 5px;
-                padding: 8px;
-                color: #1e3a2e;
-                font-size: 12px;
-                selection-background-color: #7fa07f;
-            }
-            QLineEdit:focus {
-                border-color: #4d7a4d;  /* Более темный зеленый при фокусе */
-                background-color: #f8fff8;
-            }
-            QLineEdit.error {
-                border: 2px solid #d46b6b;  /* Красный для ошибок */
-                background-color: #fff0f0;
-            }
-            QPushButton {
-                background-color: #6b8f6b;  /* Зеленый для кнопок */
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-weight: bold;
-                font-size: 12px;
-                min-width: 120px;
-            }
-            QPushButton:hover {
-                background-color: #527352;  /* Темнее при наведении */
-            }
-            QPushButton:pressed {
-                background-color: #3e5a3e;
-            }
-            QPushButton#cancelButton {
-                background-color: #8f9e8f;  /* Серо-зеленый для кнопки отмены */
-            }
-            QPushButton#cancelButton:hover {
-                background-color: #748774;
-            }
-            QPushButton#registerButton {
-                background-color: #2196F3;  /* Синий для кнопки регистрации */
-            }
-            QPushButton#registerButton:hover {
-                background-color: #1976D2;
-            }
-        """)
-        
-        # Основной вертикальный layout
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(25)
-        main_layout.setContentsMargins(40, 30, 40, 30)
-        
-        # Заголовок
-        title_label = QLabel("РЕГИСТРАЦИЯ")
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("""
-            QLabel {
-                color: #1e4a2e;
-                font-size: 20px;
-                font-weight: bold;
-                padding: 10px;
-                background-color: rgba(150, 180, 150, 0.3);
-                border-radius: 8px;
-            }
-        """)
-        main_layout.addWidget(title_label)
-        
-        # Сетка для полей ввода
-        grid_layout = QGridLayout()
-        grid_layout.setVerticalSpacing(15)
-        grid_layout.setHorizontalSpacing(15)
-        grid_layout.setColumnStretch(1, 1)
-        
-        # Поля ввода
-        self.fields = {}
-        field_names = ['Имя', 'Фамилия', 'Логин', 'Пароль', 'Любимый клуб']
-        
-        for i, name in enumerate(field_names):
-            label = QLabel(name + ":")
-            label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            
-            line_edit = QLineEdit()
-            line_edit.setObjectName(f"field_{name}")
-            
-            # Для поля пароля устанавливаем режим ввода пароля
-            if name == 'Пароль':
-                line_edit.setEchoMode(QLineEdit.Password)
-            
-            # Для поля "Любимый клуб" добавляем подсказку, что необязательно
-            if name == 'Любимый клуб':
-                line_edit.setPlaceholderText("необязательно")
-            
-            grid_layout.addWidget(label, i, 0)
-            grid_layout.addWidget(line_edit, i, 1)
-            
-            self.fields[name] = line_edit
-        
-        main_layout.addLayout(grid_layout)
-        
-        # Добавляем немного пространства
-        main_layout.addStretch()
-        
-        # Кнопки
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(15)
-        
-        self.cancel_button = QPushButton("Отмена")
-        self.cancel_button.setObjectName("cancelButton")
-        self.cancel_button.clicked.connect(self.cancel_registration)
-        
-        self.register_button = QPushButton("Зарегистрироваться")
-        self.register_button.setObjectName("registerButton")
-        self.register_button.clicked.connect(self.register_user)
-        
-        button_layout.addStretch()
-        button_layout.addWidget(self.cancel_button)
-        button_layout.addWidget(self.register_button)
-        
-        main_layout.addLayout(button_layout)
-        
-        self.setLayout(main_layout)
-        
-    def validate_fields(self):
-        """Проверка заполнения обязательных полей (1-4)"""
-        required_fields = ['Имя', 'Фамилия', 'Логин', 'Пароль']
-        
-        # Сначала удаляем класс ошибки у всех полей
-        for field in self.fields.values():
-            field.setProperty('class', '')
-            field.style().unpolish(field)
-            field.style().polish(field)
-        
-        for field_name in required_fields:
-            field = self.fields[field_name]
-            if not field.text().strip():
-                return False, field_name
-        return True, None
-    
-    def register_user(self):
-        """Обработка регистрации"""
-        is_valid, empty_field = self.validate_fields()
-        
-        if not is_valid:
-            # Подсветка пустого поля
-            empty_widget = self.fields[empty_field]
-            empty_widget.setProperty('class', 'error')
-            empty_widget.style().unpolish(empty_widget)
-            empty_widget.style().polish(empty_widget)
-            
-            msg_box = QMessageBox(self)
-            msg_box.setWindowTitle("Ошибка регистрации")
-            msg_box.setText(f"Поле '{empty_field}' обязательно для заполнения!")
-            msg_box.setIcon(QMessageBox.Warning)
-            msg_box.setStandardButtons(QMessageBox.Ok)
-            msg_box.button(QMessageBox.Ok).setText("OK")
-            msg_box.exec()
-            return
-        
-        # Сбор данных
-        user_data = {
-            'Имя': self.fields['Имя'].text().strip(),
-            'Фамилия': self.fields['Фамилия'].text().strip(),
-            'Логин': self.fields['Логин'].text().strip(),
-            'Пароль': self.fields['Пароль'].text().strip(),
-            'Любимый клуб': self.fields['Любимый клуб'].text().strip()
-        }
-        
-        # Формируем сообщение об успешной регистрации
-        club_info = f"Любимый клуб: {user_data['Любимый клуб']}" if user_data['Любимый клуб'] else "Любимый клуб: не указан"
-        
-        # Успешная регистрация
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Успешная регистрация")
-        msg_box.setText(f"Добро пожаловать, {user_data['Имя']} {user_data['Фамилия']}!\n\n"
-                       f"Логин: {user_data['Логин']}\n"
-                       f"{club_info}")
-        msg_box.setIcon(QMessageBox.Information)
-        msg_box.setStandardButtons(QMessageBox.Ok)
-        msg_box.button(QMessageBox.Ok).setText("OK")
-        msg_box.exec()
-        
-        # Очистка полей
-        for field in self.fields.values():
-            field.clear()
-            
-        # Сбрасываем класс ошибки
-        for field in self.fields.values():
-            field.setProperty('class', '')
-            field.style().unpolish(field)
-            field.style().polish(field)
-    
-    def cancel_registration(self):
-        """Отмена регистрации и возврат в окно входа"""
-        # Создаем кастомное окно подтверждения с русскими кнопками
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Подтверждение")
-        msg_box.setText("Вы уверены, что хотите отменить регистрацию?")
-        msg_box.setIcon(QMessageBox.Question)
-        
-        # Создаем кнопки с русскими надписями
-        yes_button = msg_box.addButton("Да", QMessageBox.YesRole)
-        no_button = msg_box.addButton("Нет", QMessageBox.NoRole)
-        
-        # Устанавливаем кнопку "Нет" как кнопку по умолчанию
-        msg_box.setDefaultButton(no_button)
-        
-        # Показываем окно и получаем результат
-        msg_box.exec()
-        
-        # Проверяем, какая кнопка была нажата
-        if msg_box.clickedButton() == yes_button:
-            self.hide()
-            self.login_window.show()
-
-class LoginWindow(QWidget):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.registration_window = None
-        self.initUI()
+        self.setWindowTitle("Персональный трекер футбольных матчей")
+        self.setFixedSize(900, 600)
         
-    def initUI(self):
-        # Настройка окна
-        self.setWindowTitle("Вход")
-        self.setFixedSize(400, 350)
+        # Центральный виджет
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
         
-        # Установка зеленовато-бело-серой цветовой гаммы через CSS (в том же стиле)
+        # Установка зеленовато-бело-серой цветовой гаммы (как в окне авторизации)
         self.setStyleSheet("""
-            QWidget {
-                background-color: #e8f0e8;  /* Светлый зеленовато-серый фон */
+            QMainWindow {
+                background-color: #e8f0e8;
+            }
+            QFrame#leftPanel {
+                background-color: #d0e0d0;  /* Светло-зеленый для левой панели */
+                border-right: 2px solid #9bb89b;
+            }
+            QFrame#rightPanel {
+                background-color: #e8f0e8;  /* Основной фон */
             }
             QLabel {
-                color: #2c4c3b;  /* Темно-зеленый текст */
+                color: #2c4c3b;
                 font-weight: bold;
-                font-size: 12px;
             }
-            QLineEdit {
-                background-color: #ffffff;  /* Белый фон полей */
-                border: 2px solid #9bb89b;  /* Зеленовато-серый бордер */
-                border-radius: 5px;
-                padding: 8px;
-                color: #1e3a2e;
-                font-size: 12px;
-                selection-background-color: #7fa07f;
+            QLabel#avatar {
+                background-color: #ffffff;
+                border: 3px solid #6b8f6b;
+                color: #2c4c3b;
+                font-size: 40px;
             }
-            QLineEdit:focus {
-                border-color: #4d7a4d;  /* Более темный зеленый при фокусе */
-                background-color: #f8fff8;
+            QLabel#avatar:hover {
+                background-color: #f0f8f0;
+                border-color: #527352;
             }
-            QLineEdit.error {
-                border: 2px solid #d46b6b;  /* Красный для ошибок */
-                background-color: #fff0f0;
+            QLabel#eventsTitle {
+                color: #2c4c3b;
+                font-size: 18px;
+                font-weight: bold;
+                background-color: rgba(150, 180, 150, 0.3);
+                padding: 10px;
+                border-radius: 8px;
+            }
+            QLabel#eventCircle {
+                background-color: #ffffff;
+                border: 3px solid #6b8f6b;
+                color: #2c4c3b;
+                font-size: 36px;
+                font-weight: bold;
             }
             QPushButton {
-                background-color: #6b8f6b;  /* Зеленый для кнопок */
+                background-color: #6b8f6b;
                 color: white;
                 border: none;
                 border-radius: 5px;
-                padding: 10px 20px;
+                padding: 8px 15px;
                 font-weight: bold;
-                font-size: 12px;
-                min-width: 120px;
+                font-size: 14px;
+                text-align: left;
             }
             QPushButton:hover {
-                background-color: #527352;  /* Темнее при наведении */
+                background-color: #527352;
             }
             QPushButton:pressed {
                 background-color: #3e5a3e;
             }
-            QPushButton#registerButton {
-                background-color: #2196F3;  /* Синий для кнопки регистрации */
+            QPushButton:disabled {
+                background-color: #9bb89b;
+                color: #e8f0e8;
             }
-            QPushButton#registerButton:hover {
-                background-color: #1976D2;
+            QPushButton#adminButton {
+                background-color: #8f9e8f;
             }
-            QPushButton#loginButton {
-                background-color: #6b8f6b;  /* Зеленый для кнопки входа */
+            QPushButton#adminButton:hover {
+                background-color: #748774;
             }
-        """)
-        
-        # Основной вертикальный layout
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(25)
-        main_layout.setContentsMargins(40, 30, 40, 30)
-        
-        # Заголовок
-        title_label = QLabel("BBC")
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("""
-            QLabel {
-                color: #1e4a2e;
+            QPushButton#settingsButton {
+                background-color: #6b8f6b;
+                color: white;
                 font-size: 20px;
-                font-weight: bold;
-                padding: 10px;
-                background-color: rgba(150, 180, 150, 0.3);
-                border-radius: 8px;
+                border-radius: 20px;
+            }
+            QPushButton#settingsButton:hover {
+                background-color: #527352;
+            }
+            QPushButton#settingsButton:disabled {
+                background-color: #9bb89b;
             }
         """)
-        main_layout.addWidget(title_label)
         
-        # Сетка для полей ввода
-        grid_layout = QGridLayout()
-        grid_layout.setVerticalSpacing(15)
-        grid_layout.setHorizontalSpacing(15)
-        grid_layout.setColumnStretch(1, 1)
+        # Главный горизонтальный layout
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         
-        # Поле логина
-        login_label = QLabel("Логин:")
-        login_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.login_input = QLineEdit()
-        self.login_input.setObjectName("login_field")
-        grid_layout.addWidget(login_label, 0, 0)
-        grid_layout.addWidget(self.login_input, 0, 1)
+        # ЛЕВАЯ ПАНЕЛЬ С КНОПКАМИ
+        left_panel = QFrame()
+        left_panel.setObjectName("leftPanel")
+        left_panel.setFixedWidth(250)
         
-        # Поле пароля
-        password_label = QLabel("Пароль:")
-        password_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.password_input = QLineEdit()
-        self.password_input.setObjectName("password_field")
-        self.password_input.setEchoMode(QLineEdit.Password)
-        grid_layout.addWidget(password_label, 1, 0)
-        grid_layout.addWidget(self.password_input, 1, 1)
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(20, 30, 20, 30)
+        left_layout.setSpacing(10)
+        left_layout.setAlignment(Qt.AlignTop)
         
-        main_layout.addLayout(grid_layout)
+        # Кликабельная аватарка
+        avatar = QLabel("👤")
+        avatar.setObjectName("avatar")
+        avatar.setFixedSize(80, 80)
+        avatar.setAlignment(Qt.AlignCenter)
+        avatar.setCursor(Qt.PointingHandCursor)
+        avatar.mousePressEvent = self.avatar_clicked
+        left_layout.addWidget(avatar, 0, Qt.AlignHCenter)
         
-        # Добавляем немного пространства
-        main_layout.addStretch()
+        left_layout.addSpacing(20)
         
-        # Кнопки
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(15)
+        # Кнопки для всех пользователей
+        chat_button = QPushButton("Чат пользователей")
+        chat_button.setEnabled(False)
+        chat_button.setFixedHeight(40)
+        chat_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(chat_button)
         
-        self.register_btn = QPushButton("Зарегистрироваться")
-        self.register_btn.setObjectName("registerButton")
-        self.register_btn.clicked.connect(self.open_registration)
+        add_event_button = QPushButton("Добавить событие")
+        add_event_button.setEnabled(False)
+        add_event_button.setFixedHeight(40)
+        add_event_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(add_event_button)
         
-        self.login_btn = QPushButton("Войти")
-        self.login_btn.setObjectName("loginButton")
-        self.login_btn.clicked.connect(self.login)
+        rules_button = QPushButton("Правила")
+        rules_button.setEnabled(False)
+        rules_button.setFixedHeight(40)
+        rules_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(rules_button)
         
-        button_layout.addStretch()
-        button_layout.addWidget(self.register_btn)
-        button_layout.addWidget(self.login_btn)
+        left_layout.addSpacing(10)
         
-        main_layout.addLayout(button_layout)
+        # Дополнительные кнопки для администратора
+        clubs_button = QPushButton("Список клубов")
+        clubs_button.setObjectName("adminButton")
+        clubs_button.setEnabled(False)
+        clubs_button.setFixedHeight(40)
+        clubs_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(clubs_button)
         
-        self.setLayout(main_layout)
-    
-    def login(self):
-        """Заглушка для входа"""
-        login = self.login_input.text()
-        password = self.password_input.text()
+        players_button = QPushButton("Игроки")
+        players_button.setObjectName("adminButton")
+        players_button.setEnabled(False)
+        players_button.setFixedHeight(40)
+        players_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(players_button)
         
-        # Сначала удаляем класс ошибки у полей
-        self.login_input.setProperty('class', '')
-        self.login_input.style().unpolish(self.login_input)
-        self.login_input.style().polish(self.login_input)
+        users_button = QPushButton("Список пользователей")
+        users_button.setObjectName("adminButton")
+        users_button.setEnabled(False)
+        users_button.setFixedHeight(40)
+        users_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(users_button)
         
-        self.password_input.setProperty('class', '')
-        self.password_input.style().unpolish(self.password_input)
-        self.password_input.style().polish(self.password_input)
+        left_layout.addStretch()
         
-        if not login or not password:
-            # Подсвечиваем пустые поля
-            if not login:
-                self.login_input.setProperty('class', 'error')
-                self.login_input.style().unpolish(self.login_input)
-                self.login_input.style().polish(self.login_input)
+        # ПРАВАЯ ПАНЕЛЬ
+        right_panel = QFrame()
+        right_panel.setObjectName("rightPanel")
+        
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Верхняя панель с кнопкой настройки фона
+        top_bar = QHBoxLayout()
+        top_bar.addStretch()
+        
+        # Кнопка настройки фона в виде шестеренки
+        settings_button = QPushButton("⚙️")
+        settings_button.setObjectName("settingsButton")
+        settings_button.setEnabled(False)
+        settings_button.setFixedSize(40, 40)
+        settings_button.setStyleSheet("""
+            QPushButton {
+                qproperty-alignment: AlignCenter;
+                padding: 0px;
+            }
+        """)
+        top_bar.addWidget(settings_button)
+        
+        right_layout.addLayout(top_bar)
+        
+        right_layout.addSpacing(20)
+        
+        # Заголовок "Ваши события"
+        events_title = QLabel("Ваши события")
+        events_title.setObjectName("eventsTitle")
+        events_title.setAlignment(Qt.AlignCenter)
+        right_layout.addWidget(events_title)
+        
+        right_layout.addSpacing(20)
+        
+        # Контейнер для событий (1 и 2) - большие круги
+        events_container = QWidget()
+        events_layout = QHBoxLayout(events_container)
+        events_layout.setSpacing(40)
+        events_layout.setAlignment(Qt.AlignCenter)
+        
+        for i in ["1", "2"]:
+            circle_container = QVBoxLayout()
             
-            if not password:
-                self.password_input.setProperty('class', 'error')
-                self.password_input.style().unpolish(self.password_input)
-                self.password_input.style().polish(self.password_input)
+            circle = QLabel(i)
+            circle.setObjectName("eventCircle")
+            circle.setFixedSize(100, 100)
+            circle.setAlignment(Qt.AlignCenter)
+            circle_container.addWidget(circle, 0, Qt.AlignCenter)
             
-            QMessageBox.warning(self, "Ошибка входа", "Заполните все поля!")
-            return
+            events_layout.addLayout(circle_container)
         
-        # Создаем кастомное окно с русскими кнопками
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Вход")
-        msg_box.setText(f"Попытка входа: логин={login}, пароль={'*' * len(password)}")
-        msg_box.setIcon(QMessageBox.Information)
-        msg_box.setStandardButtons(QMessageBox.Ok)
-        msg_box.button(QMessageBox.Ok).setText("OK")
-        msg_box.exec()
+        right_layout.addWidget(events_container)
+        right_layout.addStretch()
+        
+        # Добавляем панели
+        main_layout.addWidget(left_panel)
+        main_layout.addWidget(right_panel, 1)
     
-    def open_registration(self):
-        """Открытие окна регистрации"""
-        if not self.registration_window:
-            self.registration_window = RegistrationForm(self)
-        self.hide()
-        self.registration_window.show()
+    def avatar_clicked(self, event):
+        print("Переход в профиль (заглушка)")
 
-def main():
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     # Устанавливаем стиль Fusion для более современного вида
     app.setStyle('Fusion')
     
-    login_window = LoginWindow()
-    login_window.show()
-    
+    window = MainWindow()
+    window.show()
     sys.exit(app.exec())
-
-if __name__ == '__main__':
-    main()
