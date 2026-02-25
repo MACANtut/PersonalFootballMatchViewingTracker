@@ -1,15 +1,228 @@
 import os
 import sys
 
+sys.dont_write_bytecode = True
+
 postgres_path = r"C:\Program Files\PostgreSQL\17\bin"
 if os.path.exists(postgres_path):
     os.environ["PATH"] = postgres_path + os.pathsep + os.environ["PATH"]
 
-from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-                               QGridLayout, QLabel, QLineEdit, 
-                               QPushButton, QMessageBox)
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
+                               QHBoxLayout, QPushButton, QLabel, QFrame,
+                               QGridLayout, QLineEdit, QMessageBox)
 from PySide6.QtCore import Qt
 from database import Database
+
+class MainWindow(QMainWindow):
+    def __init__(self, user_data=None):
+        super().__init__()
+        self.user_data = user_data
+        self.setWindowTitle("Персональный трекер футбольных матчей")
+        self.setFixedSize(900, 600)
+        
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #e8f0e8;
+            }
+            QFrame#leftPanel {
+                background-color: #d0e0d0;
+                border-right: 2px solid #9bb89b;
+            }
+            QFrame#rightPanel {
+                background-color: #e8f0e8;
+            }
+            QLabel {
+                color: #2c4c3b;
+                font-weight: bold;
+            }
+            QLabel#avatar {
+                background-color: #ffffff;
+                border: 3px solid #6b8f6b;
+                color: #2c4c3b;
+                font-size: 40px;
+            }
+            QLabel#avatar:hover {
+                background-color: #f0f8f0;
+                border-color: #527352;
+            }
+            QLabel#eventsTitle {
+                color: #2c4c3b;
+                font-size: 18px;
+                font-weight: bold;
+                background-color: rgba(150, 180, 150, 0.3);
+                padding: 10px;
+                border-radius: 8px;
+            }
+            QLabel#eventCircle {
+                background-color: #ffffff;
+                border: 3px solid #6b8f6b;
+                color: #2c4c3b;
+                font-size: 36px;
+                font-weight: bold;
+            }
+            QPushButton {
+                background-color: #6b8f6b;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 15px;
+                font-weight: bold;
+                font-size: 14px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #527352;
+            }
+            QPushButton:pressed {
+                background-color: #3e5a3e;
+            }
+            QPushButton:disabled {
+                background-color: #9bb89b;
+                color: #e8f0e8;
+            }
+            QPushButton#adminButton {
+                background-color: #8f9e8f;
+            }
+            QPushButton#adminButton:hover {
+                background-color: #748774;
+            }
+            QPushButton#settingsButton {
+                background-color: #6b8f6b;
+                color: white;
+                font-size: 20px;
+                border-radius: 20px;
+            }
+            QPushButton#settingsButton:hover {
+                background-color: #527352;
+            }
+            QPushButton#settingsButton:disabled {
+                background-color: #9bb89b;
+            }
+        """)
+        
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        left_panel = QFrame()
+        left_panel.setObjectName("leftPanel")
+        left_panel.setFixedWidth(250)
+        
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(20, 30, 20, 30)
+        left_layout.setSpacing(10)
+        left_layout.setAlignment(Qt.AlignTop)
+        
+        avatar = QLabel("👤")
+        avatar.setObjectName("avatar")
+        avatar.setFixedSize(80, 80)
+        avatar.setAlignment(Qt.AlignCenter)
+        avatar.setCursor(Qt.PointingHandCursor)
+        avatar.mousePressEvent = self.avatar_clicked
+        left_layout.addWidget(avatar, 0, Qt.AlignHCenter)
+        
+        left_layout.addSpacing(20)
+        
+        chat_button = QPushButton("Чат пользователей")
+        chat_button.setEnabled(False)
+        chat_button.setFixedHeight(40)
+        chat_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(chat_button)
+        
+        add_event_button = QPushButton("Добавить событие")
+        add_event_button.setEnabled(False)
+        add_event_button.setFixedHeight(40)
+        add_event_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(add_event_button)
+        
+        rules_button = QPushButton("Правила")
+        rules_button.setEnabled(False)
+        rules_button.setFixedHeight(40)
+        rules_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(rules_button)
+        
+        left_layout.addSpacing(10)
+        
+        clubs_button = QPushButton("Список клубов")
+        clubs_button.setObjectName("adminButton")
+        clubs_button.setEnabled(False)
+        clubs_button.setFixedHeight(40)
+        clubs_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(clubs_button)
+        
+        players_button = QPushButton("Игроки")
+        players_button.setObjectName("adminButton")
+        players_button.setEnabled(False)
+        players_button.setFixedHeight(40)
+        players_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(players_button)
+        
+        users_button = QPushButton("Список пользователей")
+        users_button.setObjectName("adminButton")
+        users_button.setEnabled(False)
+        users_button.setFixedHeight(40)
+        users_button.setStyleSheet("padding-left: 15px;")
+        left_layout.addWidget(users_button)
+        
+        left_layout.addStretch()
+        
+        right_panel = QFrame()
+        right_panel.setObjectName("rightPanel")
+        
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(20, 20, 20, 20)
+        
+        top_bar = QHBoxLayout()
+        top_bar.addStretch()
+        
+        settings_button = QPushButton("⚙️")
+        settings_button.setObjectName("settingsButton")
+        settings_button.setEnabled(False)
+        settings_button.setFixedSize(40, 40)
+        settings_button.setStyleSheet("""
+            QPushButton {
+                qproperty-alignment: AlignCenter;
+                padding: 0px;
+            }
+        """)
+        top_bar.addWidget(settings_button)
+        
+        right_layout.addLayout(top_bar)
+        
+        right_layout.addSpacing(20)
+        
+        events_title = QLabel("Ваши события")
+        events_title.setObjectName("eventsTitle")
+        events_title.setAlignment(Qt.AlignCenter)
+        right_layout.addWidget(events_title)
+        
+        right_layout.addSpacing(20)
+        
+        events_container = QWidget()
+        events_layout = QHBoxLayout(events_container)
+        events_layout.setSpacing(40)
+        events_layout.setAlignment(Qt.AlignCenter)
+        
+        for i in ["1", "2"]:
+            circle_container = QVBoxLayout()
+            circle = QLabel(i)
+            circle.setObjectName("eventCircle")
+            circle.setFixedSize(100, 100)
+            circle.setAlignment(Qt.AlignCenter)
+            circle_container.addWidget(circle, 0, Qt.AlignCenter)
+            events_layout.addLayout(circle_container)
+        
+        right_layout.addWidget(events_container)
+        right_layout.addStretch()
+        
+        main_layout.addWidget(left_panel)
+        main_layout.addWidget(right_panel, 1)
+    
+    def avatar_clicked(self, event):
+        print("Переход в профиль (заглушка)")
 
 class RegistrationForm(QWidget):
     def __init__(self, login_window, db):
@@ -222,6 +435,7 @@ class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.registration_window = None
+        self.main_window = None
         try:
             self.db = Database(password='12345')
         except Exception as e:
@@ -374,18 +588,12 @@ class LoginWindow(QWidget):
         success, user_data, message = self.db.login_user(login, password)
         
         if success:
-            msg_box = QMessageBox(self)
-            msg_box.setWindowTitle("Вход выполнен")
-            msg_box.setText(f"Добро пожаловать, {user_data['first_name']} {user_data['last_name']}!")
-            msg_box.setIcon(QMessageBox.Information)
-            ok_button = msg_box.addButton("ОК", QMessageBox.AcceptRole)
-            msg_box.exec()
+            self.login_input.clear()
+            self.password_input.clear()
+            self.hide()
             
-            if msg_box.clickedButton() == ok_button:
-                self.login_input.clear()
-                self.password_input.clear()
-                self.hide()
-                self.show()
+            self.main_window = MainWindow(user_data)
+            self.main_window.show()
         else:
             QMessageBox.warning(self, "Ошибка входа", message)
     
