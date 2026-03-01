@@ -1,24 +1,24 @@
 import os
 import sys
-
 sys.dont_write_bytecode = True
-
-postgres_path = r"C:\Program Files\PostgreSQL\17\bin"
-if os.path.exists(postgres_path):
-    os.environ["PATH"] = postgres_path + os.pathsep + os.environ["PATH"]
-
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                QHBoxLayout, QPushButton, QLabel, QFrame,
                                QGridLayout, QLineEdit, QMessageBox)
 from PySide6.QtCore import Qt
 from database import Database
+from window_rules import RulesWindow
+from window_chat import ChatWindow
 
 class MainWindow(QMainWindow):
-    def __init__(self, user_data=None):
+    def __init__(self, user_data=None, db=None):
         super().__init__()
         self.user_data = user_data
+        self.db = db
         self.setWindowTitle("Персональный трекер футбольных матчей")
         self.setFixedSize(900, 600)
+        
+        self.rules_window = None
+        self.chat_window = None
         
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -127,9 +127,10 @@ class MainWindow(QMainWindow):
         left_layout.addSpacing(20)
         
         chat_button = QPushButton("Чат пользователей")
-        chat_button.setEnabled(False)
+        chat_button.setEnabled(True)
         chat_button.setFixedHeight(40)
         chat_button.setStyleSheet("padding-left: 15px;")
+        chat_button.clicked.connect(self.open_chat_window)
         left_layout.addWidget(chat_button)
         
         add_event_button = QPushButton("Добавить событие")
@@ -139,9 +140,10 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(add_event_button)
         
         rules_button = QPushButton("Правила")
-        rules_button.setEnabled(False)
+        rules_button.setEnabled(True)
         rules_button.setFixedHeight(40)
         rules_button.setStyleSheet("padding-left: 15px;")
+        rules_button.clicked.connect(self.open_rules_window)
         left_layout.addWidget(rules_button)
         
         left_layout.addSpacing(10)
@@ -178,7 +180,7 @@ class MainWindow(QMainWindow):
         top_bar = QHBoxLayout()
         top_bar.addStretch()
         
-        settings_button = QPushButton("⚙️")
+        settings_button = QPushButton(" ⚙️")
         settings_button.setObjectName("settingsButton")
         settings_button.setEnabled(False)
         settings_button.setFixedSize(40, 40)
@@ -191,7 +193,6 @@ class MainWindow(QMainWindow):
         top_bar.addWidget(settings_button)
         
         right_layout.addLayout(top_bar)
-        
         right_layout.addSpacing(20)
         
         events_title = QLabel("Ваши события")
@@ -208,11 +209,13 @@ class MainWindow(QMainWindow):
         
         for i in ["1", "2"]:
             circle_container = QVBoxLayout()
+            
             circle = QLabel(i)
             circle.setObjectName("eventCircle")
             circle.setFixedSize(100, 100)
             circle.setAlignment(Qt.AlignCenter)
             circle_container.addWidget(circle, 0, Qt.AlignCenter)
+            
             events_layout.addLayout(circle_container)
         
         right_layout.addWidget(events_container)
@@ -223,6 +226,30 @@ class MainWindow(QMainWindow):
     
     def avatar_clicked(self, event):
         print("Переход в профиль (заглушка)")
+    
+    def open_rules_window(self):
+        if self.rules_window is None or not self.rules_window.isVisible():
+            self.rules_window = RulesWindow()
+            self.rules_window.show()
+        else:
+            self.rules_window.raise_()
+            self.rules_window.activateWindow()
+    
+    def open_chat_window(self):
+        if self.chat_window is None or not self.chat_window.isVisible():
+            self.chat_window = ChatWindow(self.user_data, self.db)
+            self.chat_window.back_button.clicked.connect(self.close_chat_and_return)
+            self.chat_window.show()
+            self.hide()
+        else:
+            self.chat_window.raise_()
+            self.chat_window.activateWindow()
+    
+    def close_chat_and_return(self):
+        if self.chat_window:
+            self.chat_window.close()
+            self.chat_window = None
+        self.show()
 
 class RegistrationForm(QWidget):
     def __init__(self, login_window, db):
@@ -592,7 +619,7 @@ class LoginWindow(QWidget):
             self.password_input.clear()
             self.hide()
             
-            self.main_window = MainWindow(user_data)
+            self.main_window = MainWindow(user_data, self.db)
             self.main_window.show()
         else:
             QMessageBox.warning(self, "Ошибка входа", message)
