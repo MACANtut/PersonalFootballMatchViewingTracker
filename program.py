@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PySide6.QtCore import Qt
 from database import Database
 from window_rules import RulesWindow  # Импортируем окно правил
+from window_chat import ChatWindow  # Импортируем окно чата
 
 class MainWindow(QMainWindow):
     def __init__(self, user_data=None):
@@ -16,6 +17,10 @@ class MainWindow(QMainWindow):
         self.user_data = user_data
         self.setWindowTitle("Персональный трекер футбольных матчей")
         self.setFixedSize(900, 600)
+        
+        # Переменные для хранения ссылок на окна
+        self.rules_window = None
+        self.chat_window = None
         
         # Центральный виджет
         central_widget = QWidget()
@@ -130,9 +135,10 @@ class MainWindow(QMainWindow):
         
         # Кнопки для всех пользователей
         chat_button = QPushButton("Чат пользователей")
-        chat_button.setEnabled(False)
+        chat_button.setEnabled(True)  # Включаем кнопку
         chat_button.setFixedHeight(40)
         chat_button.setStyleSheet("padding-left: 15px;")
+        chat_button.clicked.connect(self.open_chat_window)  # Подключаем обработчик
         left_layout.addWidget(chat_button)
         
         add_event_button = QPushButton("Добавить событие")
@@ -234,9 +240,6 @@ class MainWindow(QMainWindow):
         # Добавляем панели
         main_layout.addWidget(left_panel)
         main_layout.addWidget(right_panel, 1)
-        
-        # Переменная для хранения ссылки на окно правил
-        self.rules_window = None
     
     def avatar_clicked(self, event):
         print("Переход в профиль (заглушка)")
@@ -250,6 +253,27 @@ class MainWindow(QMainWindow):
             # Если окно уже открыто, просто активируем его
             self.rules_window.raise_()
             self.rules_window.activateWindow()
+    
+    def open_chat_window(self):
+        """Открывает окно чата"""
+        if self.chat_window is None or not self.chat_window.isVisible():
+            self.chat_window = ChatWindow()
+            # Подключаем кнопку "Назад" в окне чата для возврата к главному окну
+            self.chat_window.back_button.clicked.connect(self.close_chat_and_return)
+            self.chat_window.show()
+            # Скрываем главное окно
+            self.hide()
+        else:
+            # Если окно уже открыто, просто активируем его
+            self.chat_window.raise_()
+            self.chat_window.activateWindow()
+    
+    def close_chat_and_return(self):
+        """Закрывает окно чата и показывает главное окно"""
+        if self.chat_window:
+            self.chat_window.close()
+            self.chat_window = None
+        self.show()
 
 class RegistrationForm(QWidget):
     def __init__(self, login_window, db):
