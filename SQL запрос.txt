@@ -1,0 +1,7 @@
+Таблица: Лига
+CREATE TABLE IF NOT EXISTS "Лига" (
+  "ID_Лиги"  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  "Название" TEXT NOT NULL,
+
+  CONSTRAINT "uq_Лига_Название" UNIQUE ("Название")
+);
