@@ -5,7 +5,7 @@ from datetime import datetime
 
 class Database:
     def __init__(self, host='localhost', port='5432', database='bbc_db', 
-                 user='postgres', password='89635441904GRgr'):
+                 user='postgres', password='12345'):
         self.connection_params = {
             'host': host,
             'port': port,
@@ -160,7 +160,8 @@ class Database:
                 
                 return list(reversed(result))
         except Exception as e:
-            return f"Ошибка получения сообщений: {e}"
+            print(f"Ошибка получения сообщений: {e}")
+            return []
     
     def get_user_by_id(self, user_id):
         try:
@@ -180,6 +181,7 @@ class Database:
                     }
                 return None
         except Exception as e:
+            print(f"Ошибка получения пользователя: {e}")
             return None
     
     def __del__(self):
