@@ -5,38 +5,230 @@ sys.dont_write_bytecode = True
 
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                QHBoxLayout, QPushButton, QLabel, QFrame,
-                               QGridLayout, QLineEdit, QMessageBox)
+                               QGridLayout, QLineEdit, QMessageBox, QDialog)
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap, QPainter, QPalette, QBrush, QFont
 from database import Database
-from window_rules import RulesWindow  # Импортируем окно правил
-from window_chat import ChatWindow  # Импортируем окно чата
+from window_rules import RulesWindow
+from window_chat import ChatWindow
+from background_settings import BackgroundDialog
+
+
+class StyledMessageBox:
+    """Класс для создания стилизованных сообщений в едином стиле"""
+    
+    @staticmethod
+    def information(parent, title, text):
+        msg_box = QMessageBox(parent)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(text)
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setStyleSheet("""
+            QMessageBox {
+                background-color: #e8f0e8;
+            }
+            QMessageBox QLabel {
+                color: #2c4c3b;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 250px;
+                padding: 15px;
+            }
+            QPushButton {
+                background-color: #6b8f6b;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 25px;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #527352;
+            }
+            QPushButton:pressed {
+                background-color: #3e5a3e;
+            }
+        """)
+        ok_button = msg_box.addButton("ОК", QMessageBox.AcceptRole)
+        msg_box.exec()
+        return msg_box.clickedButton() == ok_button
+    
+    @staticmethod
+    def warning(parent, title, text):
+        msg_box = QMessageBox(parent)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(text)
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setStyleSheet("""
+            QMessageBox {
+                background-color: #e8f0e8;
+            }
+            QMessageBox QLabel {
+                color: #2c4c3b;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 250px;
+                padding: 15px;
+            }
+            QPushButton {
+                background-color: #6b8f6b;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 25px;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #527352;
+            }
+            QPushButton:pressed {
+                background-color: #3e5a3e;
+            }
+        """)
+        ok_button = msg_box.addButton("ОК", QMessageBox.AcceptRole)
+        msg_box.exec()
+        return msg_box.clickedButton() == ok_button
+    
+    @staticmethod
+    def critical(parent, title, text):
+        msg_box = QMessageBox(parent)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(text)
+        msg_box.setIcon(QMessageBox.Critical)
+        msg_box.setStyleSheet("""
+            QMessageBox {
+                background-color: #e8f0e8;
+            }
+            QMessageBox QLabel {
+                color: #2c4c3b;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 250px;
+                padding: 15px;
+            }
+            QPushButton {
+                background-color: #6b8f6b;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 25px;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #527352;
+            }
+            QPushButton:pressed {
+                background-color: #3e5a3e;
+            }
+        """)
+        ok_button = msg_box.addButton("ОК", QMessageBox.AcceptRole)
+        msg_box.exec()
+        return msg_box.clickedButton() == ok_button
+    
+    @staticmethod
+    def question(parent, title, text):
+        msg_box = QMessageBox(parent)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(text)
+        msg_box.setIcon(QMessageBox.Question)
+        msg_box.setStyleSheet("""
+            QMessageBox {
+                background-color: #e8f0e8;
+            }
+            QMessageBox QLabel {
+                color: #2c4c3b;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 250px;
+                padding: 15px;
+            }
+            QPushButton {
+                background-color: #6b8f6b;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 25px;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #527352;
+            }
+            QPushButton:pressed {
+                background-color: #3e5a3e;
+            }
+            QPushButton#noButton {
+                background-color: #8f9e8f;
+            }
+            QPushButton#noButton:hover {
+                background-color: #748774;
+            }
+        """)
+        yes_button = msg_box.addButton("Да", QMessageBox.YesRole)
+        no_button = msg_box.addButton("Нет", QMessageBox.NoRole)
+        no_button.setObjectName("noButton")
+        msg_box.setDefaultButton(no_button)
+        msg_box.exec()
+        return msg_box.clickedButton() == yes_button
+
+
+class BackgroundFrame(QFrame):
+    """Кастомный фрейм с поддержкой масштабируемого фонового изображения"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.background_pixmap = None
+        self.setAttribute(Qt.WA_OpaquePaintEvent, False)
+        
+    def set_background_image(self, pixmap):
+        self.background_pixmap = pixmap
+        self.update()
+        
+    def paintEvent(self, event):
+        if self.background_pixmap and not self.background_pixmap.isNull():
+            painter = QPainter(self)
+            scaled_pixmap = self.background_pixmap.scaled(
+                self.size(),
+                Qt.KeepAspectRatioByExpanding,
+                Qt.SmoothTransformation
+            )
+            x = (self.width() - scaled_pixmap.width()) // 2
+            y = (self.height() - scaled_pixmap.height()) // 2
+            painter.drawPixmap(x, y, scaled_pixmap)
+        else:
+            super().paintEvent(event)
+
 
 class MainWindow(QMainWindow):
-    def __init__(self, user_data=None):
+    def __init__(self, user_data=None, db=None):
         super().__init__()
         self.user_data = user_data
+        self.db = db
         self.setWindowTitle("Персональный трекер футбольных матчей")
         self.setFixedSize(900, 600)
         
-        # Переменные для хранения ссылок на окна
         self.rules_window = None
         self.chat_window = None
+        self.background_pixmap = None
+        self.background_path = None
+        self.avatar_pixmap = None  # Для хранения аватара
         
-        # Центральный виджет
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        # Установка зеленовато-бело-серой цветовой гаммы
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #e8f0e8;
             }
             QFrame#leftPanel {
-                background-color: #d0e0d0;  /* Светло-зеленый для левой панели */
+                background-color: #d0e0d0;
                 border-right: 2px solid #9bb89b;
-            }
-            QFrame#rightPanel {
-                background-color: #e8f0e8;  /* Основной фон */
             }
             QLabel {
                 color: #2c4c3b;
@@ -46,7 +238,7 @@ class MainWindow(QMainWindow):
                 background-color: #ffffff;
                 border: 3px solid #6b8f6b;
                 color: #2c4c3b;
-                font-size: 40px;
+                border-radius: 40px;
             }
             QLabel#avatar:hover {
                 background-color: #f0f8f0;
@@ -56,16 +248,17 @@ class MainWindow(QMainWindow):
                 color: #2c4c3b;
                 font-size: 18px;
                 font-weight: bold;
-                background-color: rgba(150, 180, 150, 0.3);
+                background-color: rgba(150, 180, 150, 0.8);
                 padding: 10px;
                 border-radius: 8px;
             }
             QLabel#eventCircle {
-                background-color: #ffffff;
+                background-color: rgba(255, 255, 255, 0.9);
                 border: 3px solid #6b8f6b;
                 color: #2c4c3b;
                 font-size: 36px;
                 font-weight: bold;
+                border-radius: 50px;
             }
             QPushButton {
                 background-color: #6b8f6b;
@@ -76,6 +269,7 @@ class MainWindow(QMainWindow):
                 font-weight: bold;
                 font-size: 14px;
                 text-align: left;
+                padding-left: 15px;
             }
             QPushButton:hover {
                 background-color: #527352;
@@ -96,8 +290,15 @@ class MainWindow(QMainWindow):
             QPushButton#settingsButton {
                 background-color: #6b8f6b;
                 color: white;
-                font-size: 20px;
+                border: none;
                 border-radius: 20px;
+                font-size: 24px;
+                font-weight: bold;
+                padding: 0px;
+                min-width: 40px;
+                min-height: 40px;
+                max-width: 40px;
+                max-height: 40px;
             }
             QPushButton#settingsButton:hover {
                 background-color: #527352;
@@ -107,12 +308,10 @@ class MainWindow(QMainWindow):
             }
         """)
         
-        # Главный горизонтальный layout
         main_layout = QHBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         
-        # ЛЕВАЯ ПАНЕЛЬ С КНОПКАМИ
         left_panel = QFrame()
         left_panel.setObjectName("leftPanel")
         left_panel.setFixedWidth(250)
@@ -122,94 +321,85 @@ class MainWindow(QMainWindow):
         left_layout.setSpacing(10)
         left_layout.setAlignment(Qt.AlignTop)
         
-        # Кликабельная аватарка
-        avatar = QLabel("👤")
-        avatar.setObjectName("avatar")
-        avatar.setFixedSize(80, 80)
-        avatar.setAlignment(Qt.AlignCenter)
-        avatar.setCursor(Qt.PointingHandCursor)
-        avatar.mousePressEvent = self.avatar_clicked
-        left_layout.addWidget(avatar, 0, Qt.AlignHCenter)
+        self.avatar_label = QLabel()
+        self.avatar_label.setObjectName("avatar")
+        self.avatar_label.setFixedSize(80, 80)
+        self.avatar_label.setAlignment(Qt.AlignCenter)
+        self.avatar_label.setCursor(Qt.PointingHandCursor)
+        self.avatar_label.mousePressEvent = self.avatar_clicked
+        self.avatar_label.setText("👤")
+        self.avatar_label.setPixmap(QPixmap())
+        self.update_avatar_display()
+        left_layout.addWidget(self.avatar_label, 0, Qt.AlignHCenter)
         
         left_layout.addSpacing(20)
         
-        # Кнопки для всех пользователей
         chat_button = QPushButton("Чат пользователей")
-        chat_button.setEnabled(True)  # Включаем кнопку
+        chat_button.setEnabled(True)
         chat_button.setFixedHeight(40)
-        chat_button.setStyleSheet("padding-left: 15px;")
-        chat_button.clicked.connect(self.open_chat_window)  # Подключаем обработчик
+        chat_button.clicked.connect(self.open_chat_window)
         left_layout.addWidget(chat_button)
         
         add_event_button = QPushButton("Добавить событие")
         add_event_button.setEnabled(False)
         add_event_button.setFixedHeight(40)
-        add_event_button.setStyleSheet("padding-left: 15px;")
         left_layout.addWidget(add_event_button)
         
-        # Кнопка "Правила" - теперь активная
         rules_button = QPushButton("Правила")
-        rules_button.setEnabled(True)  # Включаем кнопку
+        rules_button.setEnabled(True)
         rules_button.setFixedHeight(40)
-        rules_button.setStyleSheet("padding-left: 15px;")
-        rules_button.clicked.connect(self.open_rules_window)  # Подключаем обработчик
+        rules_button.clicked.connect(self.open_rules_window)
         left_layout.addWidget(rules_button)
         
         left_layout.addSpacing(10)
         
-        # Дополнительные кнопки для администратора
         clubs_button = QPushButton("Список клубов")
         clubs_button.setObjectName("adminButton")
         clubs_button.setEnabled(False)
         clubs_button.setFixedHeight(40)
-        clubs_button.setStyleSheet("padding-left: 15px;")
         left_layout.addWidget(clubs_button)
         
         players_button = QPushButton("Игроки")
         players_button.setObjectName("adminButton")
         players_button.setEnabled(False)
         players_button.setFixedHeight(40)
-        players_button.setStyleSheet("padding-left: 15px;")
         left_layout.addWidget(players_button)
         
         users_button = QPushButton("Список пользователей")
         users_button.setObjectName("adminButton")
         users_button.setEnabled(False)
         users_button.setFixedHeight(40)
-        users_button.setStyleSheet("padding-left: 15px;")
         left_layout.addWidget(users_button)
         
         left_layout.addStretch()
         
-        # ПРАВАЯ ПАНЕЛЬ
-        right_panel = QFrame()
-        right_panel.setObjectName("rightPanel")
+        self.right_panel = BackgroundFrame()
+        self.right_panel.setObjectName("rightPanel")
+        self.right_panel.setStyleSheet("""
+            QFrame#rightPanel {
+                background-color: #e8f0e8;
+            }
+        """)
         
-        right_layout = QVBoxLayout(right_panel)
+        right_layout = QVBoxLayout(self.right_panel)
         right_layout.setContentsMargins(20, 20, 20, 20)
         
-        # Верхняя панель с кнопкой настройки фона
         top_bar = QHBoxLayout()
         top_bar.addStretch()
         
-        # Кнопка настройки фона в виде шестеренки
         settings_button = QPushButton("⚙️")
         settings_button.setObjectName("settingsButton")
-        settings_button.setEnabled(False)
+        settings_button.setEnabled(True)
         settings_button.setFixedSize(40, 40)
-        settings_button.setStyleSheet("""
-            QPushButton {
-                qproperty-alignment: AlignCenter;
-                padding: 0px;
-            }
-        """)
+        font = QFont("Segoe UI", 20)
+        font.setBold(True)
+        settings_button.setFont(font)
+        settings_button.clicked.connect(self.change_background)
         top_bar.addWidget(settings_button)
         
         right_layout.addLayout(top_bar)
-        
         right_layout.addSpacing(20)
         
-        # Заголовок "Ваши события"
         events_title = QLabel("Ваши события")
         events_title.setObjectName("eventsTitle")
         events_title.setAlignment(Qt.AlignCenter)
@@ -217,63 +407,115 @@ class MainWindow(QMainWindow):
         
         right_layout.addSpacing(20)
         
-        # Контейнер для событий (1 и 2) - большие круги
         events_container = QWidget()
+        events_container.setStyleSheet("background-color: transparent;")
         events_layout = QHBoxLayout(events_container)
         events_layout.setSpacing(40)
         events_layout.setAlignment(Qt.AlignCenter)
         
         for i in ["1", "2"]:
-            circle_container = QVBoxLayout()
-            
             circle = QLabel(i)
             circle.setObjectName("eventCircle")
             circle.setFixedSize(100, 100)
             circle.setAlignment(Qt.AlignCenter)
-            circle_container.addWidget(circle, 0, Qt.AlignCenter)
-            
-            events_layout.addLayout(circle_container)
+            events_layout.addWidget(circle)
         
         right_layout.addWidget(events_container)
         right_layout.addStretch()
         
-        # Добавляем панели
         main_layout.addWidget(left_panel)
-        main_layout.addWidget(right_panel, 1)
+        main_layout.addWidget(self.right_panel, 1)
+    
+    def update_avatar_display(self):
+        """Обновляет отображение аватара в главном окне"""
+        if self.avatar_pixmap and not self.avatar_pixmap.isNull():
+            self.avatar_label.setPixmap(self.avatar_pixmap)
+            self.avatar_label.setText("")
+        else:
+            self.avatar_label.setText("👤")
+            self.avatar_label.setPixmap(QPixmap())
+    
+    def change_background(self):
+        """Открывает диалог выбора фона и применяет его"""
+        dialog = BackgroundDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            try:
+                pixmap = QPixmap(dialog.selected_file)
+                if not pixmap.isNull():
+                    self.background_pixmap = pixmap
+                    self.background_path = dialog.selected_file
+                    
+                    self.right_panel.set_background_image(pixmap)
+                    self.right_panel.setStyleSheet("""
+                        QFrame#rightPanel {
+                            background-color: transparent;
+                        }
+                    """)
+                    
+                    StyledMessageBox.information(self, "Успех", "Фон успешно изменен!")
+                else:
+                    StyledMessageBox.critical(self, "Ошибка", "Не удалось загрузить изображение")
+            except Exception as e:
+                StyledMessageBox.critical(self, "Ошибка", f"Не удалось применить фон: {str(e)}")
+    
+    def resizeEvent(self, event):
+        """Обновляет фон при изменении размера окна"""
+        if hasattr(self, 'background_pixmap') and self.background_pixmap:
+            self.right_panel.set_background_image(self.background_pixmap)
+        super().resizeEvent(event)
     
     def avatar_clicked(self, event):
-        print("Переход в профиль (заглушка)")
+        """Открывает окно профиля пользователя"""
+        if self.user_data:
+            from window_profile import ProfileWindow
+            profile_dialog = ProfileWindow(self.user_data, self.db, self)
+            if hasattr(self, 'avatar_pixmap') and self.avatar_pixmap:
+                profile_dialog.set_avatar(self.avatar_pixmap)
+            if self.background_path:
+                profile_dialog.set_background(self.background_path)
+            
+            profile_dialog.avatar_updated.connect(self.update_avatar)
+            profile_dialog.exec()
+        else:
+            print("Нет данных пользователя")
+    
+    def update_avatar(self, avatar_pixmap):
+        """Обновляет аватар в главном окне"""
+        self.avatar_pixmap = avatar_pixmap
+        self.update_avatar_display()
     
     def open_rules_window(self):
-        """Открывает окно с правилами"""
         if self.rules_window is None or not self.rules_window.isVisible():
+            from window_rules import RulesWindow
             self.rules_window = RulesWindow()
+            if self.background_path:
+                self.rules_window.set_background(self.background_path)
             self.rules_window.show()
         else:
-            # Если окно уже открыто, просто активируем его
             self.rules_window.raise_()
             self.rules_window.activateWindow()
     
     def open_chat_window(self):
-        """Открывает окно чата"""
-        if self.chat_window is None or not self.chat_window.isVisible():
-            self.chat_window = ChatWindow()
-            # Подключаем кнопку "Назад" в окне чата для возврата к главному окну
-            self.chat_window.back_button.clicked.connect(self.close_chat_and_return)
-            self.chat_window.show()
-            # Скрываем главное окно
-            self.hide()
-        else:
-            # Если окно уже открыто, просто активируем его
-            self.chat_window.raise_()
-            self.chat_window.activateWindow()
+     """Открывает окно чата"""
+     if self.user_data:
+        from window_chat import ChatWindow
+        # Убираем третий аргумент (self), так как ChatWindow не принимает parent
+        self.chat_window = ChatWindow(self.user_data, self.db)
+        if self.background_path:
+            self.chat_window.set_background(self.background_path)
+        self.chat_window.back_button.clicked.connect(self.close_chat_and_return)
+        self.chat_window.show()
+        self.hide()
+     else:
+        print("Нет данных пользователя")
     
     def close_chat_and_return(self):
-        """Закрывает окно чата и показывает главное окно"""
+        """Закрывает чат и возвращается в главное окно"""
         if self.chat_window:
             self.chat_window.close()
             self.chat_window = None
         self.show()
+
 
 class RegistrationForm(QWidget):
     def __init__(self, login_window, db):
@@ -429,14 +671,14 @@ class RegistrationForm(QWidget):
             empty_widget.style().unpolish(empty_widget)
             empty_widget.style().polish(empty_widget)
             
-            QMessageBox.warning(self, "Ошибка регистрации", 
-                              f"Поле '{empty_field}' обязательно для заполнения!")
+            StyledMessageBox.warning(self, "Ошибка регистрации", 
+                                   f"Поле '{empty_field}' обязательно для заполнения!")
             return
         
         username = self.fields['Логин'].text().strip()
         if self.db.check_username_exists(username):
-            QMessageBox.warning(self, "Ошибка регистрации", 
-                              "Пользователь с таким логином уже существует!")
+            StyledMessageBox.warning(self, "Ошибка регистрации", 
+                                   "Пользователь с таким логином уже существует!")
             return
         
         success, user_id, message = self.db.register_user(
@@ -448,39 +690,25 @@ class RegistrationForm(QWidget):
         )
         
         if success:
-            msg_box = QMessageBox(self)
-            msg_box.setWindowTitle("Успешная регистрация")
-            msg_box.setText(f"Добро пожаловать, {self.fields['Имя'].text().strip()} {self.fields['Фамилия'].text().strip()}!")
-            msg_box.setIcon(QMessageBox.Information)
-            ok_button = msg_box.addButton("ОК", QMessageBox.AcceptRole)
-            msg_box.exec()
+            StyledMessageBox.information(self, "Успешная регистрация", 
+                                       f"Добро пожаловать, {self.fields['Имя'].text().strip()} {self.fields['Фамилия'].text().strip()}!")
             
-            if msg_box.clickedButton() == ok_button:
-                for field in self.fields.values():
-                    field.clear()
-                    field.setProperty('class', '')
-                    field.style().unpolish(field)
-                    field.style().polish(field)
-                
-                self.hide()
-                self.login_window.show()
-        else:
-            QMessageBox.critical(self, "Ошибка регистрации", message)
-    
-    def cancel_registration(self):
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Подтверждение")
-        msg_box.setText("Вы уверены, что хотите отменить регистрацию?")
-        msg_box.setIcon(QMessageBox.Question)
-        
-        yes_button = msg_box.addButton("Да", QMessageBox.YesRole)
-        no_button = msg_box.addButton("Нет", QMessageBox.NoRole)
-        msg_box.setDefaultButton(no_button)
-        msg_box.exec()
-        
-        if msg_box.clickedButton() == yes_button:
+            for field in self.fields.values():
+                field.clear()
+                field.setProperty('class', '')
+                field.style().unpolish(field)
+                field.style().polish(field)
+            
             self.hide()
             self.login_window.show()
+        else:
+            StyledMessageBox.critical(self, "Ошибка регистрации", message)
+    
+    def cancel_registration(self):
+        if StyledMessageBox.question(self, "Подтверждение", "Вы уверены, что хотите отменить регистрацию?"):
+            self.hide()
+            self.login_window.show()
+
 
 class LoginWindow(QWidget):
     def __init__(self):
@@ -490,7 +718,7 @@ class LoginWindow(QWidget):
         try:
             self.db = Database(password='12345')
         except Exception as e:
-            QMessageBox.critical(None, "Ошибка", f"Ошибка подключения: {e}")
+            StyledMessageBox.critical(None, "Ошибка", f"Ошибка подключения: {e}")
             sys.exit(1)
         self.initUI()
     
@@ -633,7 +861,7 @@ class LoginWindow(QWidget):
                 self.password_input.style().unpolish(self.password_input)
                 self.password_input.style().polish(self.password_input)
             
-            QMessageBox.warning(self, "Ошибка входа", "Заполните все поля!")
+            StyledMessageBox.warning(self, "Ошибка входа", "Заполните все поля!")
             return
         
         success, user_data, message = self.db.login_user(login, password)
@@ -643,16 +871,17 @@ class LoginWindow(QWidget):
             self.password_input.clear()
             self.hide()
             
-            self.main_window = MainWindow(user_data)
+            self.main_window = MainWindow(user_data, self.db)
             self.main_window.show()
         else:
-            QMessageBox.warning(self, "Ошибка входа", message)
+            StyledMessageBox.warning(self, "Ошибка входа", message)
     
     def open_registration(self):
         if not self.registration_window:
             self.registration_window = RegistrationForm(self, self.db)
         self.hide()
         self.registration_window.show()
+
 
 def main():
     app = QApplication(sys.argv)
@@ -662,6 +891,7 @@ def main():
     login_window.show()
     
     sys.exit(app.exec())
+
 
 if __name__ == '__main__':
     main()

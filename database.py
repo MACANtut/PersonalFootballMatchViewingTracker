@@ -1,10 +1,11 @@
 import hashlib
 import psycopg2
 from psycopg2 import OperationalError, IntegrityError
+from datetime import datetime
 
 class Database:
     def __init__(self, host='localhost', port='5432', database='bbc_db', 
-                 user='postgres', password='89635441904GRgr'):
+                 user='postgres', password='12345'):
         self.connection_params = {
             'host': host,
             'port': port,
@@ -40,6 +41,15 @@ class Database:
                         last_name VARCHAR(100) NOT NULL,
                         favorite_club VARCHAR(100),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS chat_messages (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES credentials(id) ON DELETE CASCADE,
+                        message TEXT NOT NULL,
+                        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                 """)
                 self.conn.commit()
@@ -105,6 +115,74 @@ class Database:
                     return False, None, "Неверный логин или пароль"
         except Exception as e:
             return False, None, f"Ошибка входа: {e}"
+    
+    def save_message(self, user_id, message):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO chat_messages (user_id, message, sent_at)
+                    VALUES (%s, %s, %s)
+                    RETURNING id, sent_at
+                """, (user_id, message, datetime.now()))
+                result = cur.fetchone()
+                self.conn.commit()
+                return True, {
+                    'id': result[0],
+                    'sent_at': result[1]
+                }
+        except Exception as e:
+            self.conn.rollback()
+            return False, f"Ошибка сохранения сообщения: {e}"
+    
+    def get_chat_messages(self, limit=50):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    SELECT cm.id, cm.user_id, cm.message, cm.sent_at,
+                           p.first_name, p.last_name
+                    FROM chat_messages cm
+                    JOIN user_profiles p ON cm.user_id = p.id
+                    ORDER BY cm.sent_at DESC
+                    LIMIT %s
+                """, (limit,))
+                messages = cur.fetchall()
+                
+                result = []
+                for msg in messages:
+                    result.append({
+                        'id': msg[0],
+                        'user_id': msg[1],
+                        'message': msg[2],
+                        'sent_at': msg[3],
+                        'first_name': msg[4],
+                        'last_name': msg[5]
+                    })
+                
+                return list(reversed(result))
+        except Exception as e:
+            print(f"Ошибка получения сообщений: {e}")
+            return []
+    
+    def get_user_by_id(self, user_id):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, first_name, last_name, favorite_club
+                    FROM user_profiles
+                    WHERE id = %s
+                """, (user_id,))
+                user = cur.fetchone()
+                if user:
+                    return {
+                        'id': user[0],
+                        'first_name': user[1],
+                        'last_name': user[2],
+                        'favorite_club': user[3]
+                    }
+                return None
+        except Exception as e:
+            print(f"Ошибка получения пользователя: {e}")
+            return None
     
     def __del__(self):
         if hasattr(self, 'conn') and self.conn:
