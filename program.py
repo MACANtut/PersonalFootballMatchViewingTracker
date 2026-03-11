@@ -11,6 +11,8 @@ from PySide6.QtGui import QPixmap, QPainter, QPalette, QBrush, QFont
 from database import Database
 from window_rules import RulesWindow
 from window_chat import ChatWindow
+from window_profile import ProfileWindow
+from windows_users import UsersWindow
 from background_settings import BackgroundDialog
 
 
@@ -52,7 +54,7 @@ class StyledMessageBox:
             }
         """)
         ok_button = msg_box.addButton("ОК", QMessageBox.AcceptRole)
-        msg_box.exec_()
+        msg_box.exec()
         return msg_box.clickedButton() == ok_button
     
     @staticmethod
@@ -90,7 +92,7 @@ class StyledMessageBox:
             }
         """)
         ok_button = msg_box.addButton("ОК", QMessageBox.AcceptRole)
-        msg_box.exec_()
+        msg_box.exec()
         return msg_box.clickedButton() == ok_button
     
     @staticmethod
@@ -128,7 +130,7 @@ class StyledMessageBox:
             }
         """)
         ok_button = msg_box.addButton("ОК", QMessageBox.AcceptRole)
-        msg_box.exec_()
+        msg_box.exec()
         return msg_box.clickedButton() == ok_button
     
     @staticmethod
@@ -175,7 +177,7 @@ class StyledMessageBox:
         no_button = msg_box.addButton("Нет", QMessageBox.NoRole)
         no_button.setObjectName("noButton")
         msg_box.setDefaultButton(no_button)
-        msg_box.exec_()
+        msg_box.exec()
         return msg_box.clickedButton() == yes_button
 
 
@@ -215,8 +217,10 @@ class MainWindow(QMainWindow):
         
         self.rules_window = None
         self.chat_window = None
+        self.users_window = None
         self.background_pixmap = None
         self.background_path = None
+        self.avatar_pixmap = None
         
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -237,7 +241,6 @@ class MainWindow(QMainWindow):
                 background-color: #ffffff;
                 border: 3px solid #6b8f6b;
                 color: #2c4c3b;
-                font-size: 40px;
                 border-radius: 40px;
             }
             QLabel#avatar:hover {
@@ -290,19 +293,21 @@ class MainWindow(QMainWindow):
             QPushButton#settingsButton {
                 background-color: #6b8f6b;
                 color: white;
-                font-size: 24px;
+                border: none;
                 border-radius: 20px;
+                font-size: 24px;
+                font-weight: bold;
                 padding: 0px;
-                margin: 0px;
+                min-width: 40px;
+                min-height: 40px;
+                max-width: 40px;
+                max-height: 40px;
             }
             QPushButton#settingsButton:hover {
                 background-color: #527352;
             }
             QPushButton#settingsButton:disabled {
                 background-color: #9bb89b;
-            }
-            QPushButton#settingsButton::menu-indicator {
-                image: none;
             }
         """)
         
@@ -319,13 +324,16 @@ class MainWindow(QMainWindow):
         left_layout.setSpacing(10)
         left_layout.setAlignment(Qt.AlignTop)
         
-        avatar = QLabel("👤")
-        avatar.setObjectName("avatar")
-        avatar.setFixedSize(80, 80)
-        avatar.setAlignment(Qt.AlignCenter)
-        avatar.setCursor(Qt.PointingHandCursor)
-        avatar.mousePressEvent = self.avatar_clicked
-        left_layout.addWidget(avatar, 0, Qt.AlignHCenter)
+        self.avatar_label = QLabel()
+        self.avatar_label.setObjectName("avatar")
+        self.avatar_label.setFixedSize(80, 80)
+        self.avatar_label.setAlignment(Qt.AlignCenter)
+        self.avatar_label.setCursor(Qt.PointingHandCursor)
+        self.avatar_label.mousePressEvent = self.avatar_clicked
+        self.avatar_label.setText("👤")
+        self.avatar_label.setPixmap(QPixmap())
+        self.update_avatar_display()
+        left_layout.addWidget(self.avatar_label, 0, Qt.AlignHCenter)
         
         left_layout.addSpacing(20)
         
@@ -362,8 +370,9 @@ class MainWindow(QMainWindow):
         
         users_button = QPushButton("Список пользователей")
         users_button.setObjectName("adminButton")
-        users_button.setEnabled(False)
+        users_button.setEnabled(True)
         users_button.setFixedHeight(40)
+        users_button.clicked.connect(self.open_users_window)
         left_layout.addWidget(users_button)
         
         left_layout.addStretch()
@@ -382,27 +391,13 @@ class MainWindow(QMainWindow):
         top_bar = QHBoxLayout()
         top_bar.addStretch()
         
-        # Кнопка настройки фона с центрированной шестеренкой
         settings_button = QPushButton("⚙️")
         settings_button.setObjectName("settingsButton")
         settings_button.setEnabled(True)
         settings_button.setFixedSize(40, 40)
-        settings_button.setFont(QFont("Segoe UI", 20))
-        settings_button.setStyleSheet("""
-            QPushButton#settingsButton {
-                background-color: #6b8f6b;
-                color: white;
-                border: none;
-                border-radius: 20px;
-                padding: 0px;
-                margin: 0px;
-                qproperty-alignment: AlignCenter;
-                font-size: 24px;
-            }
-            QPushButton#settingsButton:hover {
-                background-color: #527352;
-            }
-        """)
+        font = QFont("Segoe UI", 20)
+        font.setBold(True)
+        settings_button.setFont(font)
         settings_button.clicked.connect(self.change_background)
         top_bar.addWidget(settings_button)
         
@@ -435,6 +430,15 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(left_panel)
         main_layout.addWidget(self.right_panel, 1)
     
+    def update_avatar_display(self):
+        """Обновляет отображение аватара в главном окне"""
+        if self.avatar_pixmap and not self.avatar_pixmap.isNull():
+            self.avatar_label.setPixmap(self.avatar_pixmap)
+            self.avatar_label.setText("")
+        else:
+            self.avatar_label.setText("👤")
+            self.avatar_label.setPixmap(QPixmap())
+    
     def change_background(self):
         """Открывает диалог выбора фона и применяет его"""
         dialog = BackgroundDialog(self)
@@ -465,7 +469,24 @@ class MainWindow(QMainWindow):
         super().resizeEvent(event)
     
     def avatar_clicked(self, event):
-        print("Переход в профиль (заглушка)")
+        """Открывает окно профиля пользователя"""
+        if self.user_data:
+            profile_dialog = ProfileWindow(self.user_data, self.db, self)
+            if hasattr(self, 'avatar_pixmap') and self.avatar_pixmap:
+                profile_dialog.set_avatar(self.avatar_pixmap)
+            # Передаем pixmap, а не путь
+            if hasattr(self, 'background_pixmap') and self.background_pixmap and not self.background_pixmap.isNull():
+                profile_dialog.set_background_pixmap(self.background_pixmap)
+            
+            profile_dialog.avatar_updated.connect(self.update_avatar)
+            profile_dialog.exec()
+        else:
+            print("Нет данных пользователя")
+    
+    def update_avatar(self, avatar_pixmap):
+        """Обновляет аватар в главном окне"""
+        self.avatar_pixmap = avatar_pixmap
+        self.update_avatar_display()
     
     def open_rules_window(self):
         if self.rules_window is None or not self.rules_window.isVisible():
@@ -478,7 +499,8 @@ class MainWindow(QMainWindow):
             self.rules_window.activateWindow()
     
     def open_chat_window(self):
-        if self.chat_window is None or not self.chat_window.isVisible():
+        """Открывает окно чата"""
+        if self.user_data:
             self.chat_window = ChatWindow(self.user_data, self.db)
             if self.background_path:
                 self.chat_window.set_background(self.background_path)
@@ -486,14 +508,26 @@ class MainWindow(QMainWindow):
             self.chat_window.show()
             self.hide()
         else:
-            self.chat_window.raise_()
-            self.chat_window.activateWindow()
+            print("Нет данных пользователя")
     
     def close_chat_and_return(self):
+        """Закрывает чат и возвращается в главное окно"""
         if self.chat_window:
             self.chat_window.close()
             self.chat_window = None
         self.show()
+    
+    def open_users_window(self):
+        """Открывает окно со списком пользователей"""
+        if self.users_window is None or not self.users_window.isVisible():
+            self.users_window = UsersWindow(self.db, self)
+            # Передаем pixmap, а не путь
+            if hasattr(self, 'background_pixmap') and self.background_pixmap and not self.background_pixmap.isNull():
+                self.users_window.set_background_pixmap(self.background_pixmap)
+            self.users_window.show()
+        else:
+            self.users_window.raise_()
+            self.users_window.activateWindow()
 
 
 class RegistrationForm(QWidget):

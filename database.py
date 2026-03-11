@@ -5,7 +5,7 @@ from datetime import datetime
 
 class Database:
     def __init__(self, host='localhost', port='5432', database='bbc_db', 
-                 user='postgres', password='89635441904GRgr'):
+                 user='postgres', password='12345'):
         self.connection_params = {
             'host': host,
             'port': port,
