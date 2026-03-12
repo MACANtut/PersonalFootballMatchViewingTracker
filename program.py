@@ -11,6 +11,9 @@ from PySide6.QtGui import QPixmap, QPainter, QPalette, QBrush, QFont
 from database import Database
 from window_rules import RulesWindow
 from window_chat import ChatWindow
+from window_profile import ProfileWindow
+from windows_users import UsersWindow
+from window_players import PlayersWindow
 from background_settings import BackgroundDialog
 
 
@@ -215,9 +218,11 @@ class MainWindow(QMainWindow):
         
         self.rules_window = None
         self.chat_window = None
+        self.users_window = None
+        self.players_window = None
         self.background_pixmap = None
         self.background_path = None
-        self.avatar_pixmap = None  # Для хранения аватара
+        self.avatar_pixmap = None
         
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -280,12 +285,6 @@ class MainWindow(QMainWindow):
             QPushButton:disabled {
                 background-color: #9bb89b;
                 color: #e8f0e8;
-            }
-            QPushButton#adminButton {
-                background-color: #8f9e8f;
-            }
-            QPushButton#adminButton:hover {
-                background-color: #748774;
             }
             QPushButton#settingsButton {
                 background-color: #6b8f6b;
@@ -354,21 +353,20 @@ class MainWindow(QMainWindow):
         left_layout.addSpacing(10)
         
         clubs_button = QPushButton("Список клубов")
-        clubs_button.setObjectName("adminButton")
         clubs_button.setEnabled(False)
         clubs_button.setFixedHeight(40)
         left_layout.addWidget(clubs_button)
         
         players_button = QPushButton("Игроки")
-        players_button.setObjectName("adminButton")
-        players_button.setEnabled(False)
+        players_button.setEnabled(True)
         players_button.setFixedHeight(40)
+        players_button.clicked.connect(self.open_players_window)
         left_layout.addWidget(players_button)
         
         users_button = QPushButton("Список пользователей")
-        users_button.setObjectName("adminButton")
-        users_button.setEnabled(False)
+        users_button.setEnabled(True)
         users_button.setFixedHeight(40)
+        users_button.clicked.connect(self.open_users_window)
         left_layout.addWidget(users_button)
         
         left_layout.addStretch()
@@ -467,12 +465,11 @@ class MainWindow(QMainWindow):
     def avatar_clicked(self, event):
         """Открывает окно профиля пользователя"""
         if self.user_data:
-            from window_profile import ProfileWindow
             profile_dialog = ProfileWindow(self.user_data, self.db, self)
             if hasattr(self, 'avatar_pixmap') and self.avatar_pixmap:
                 profile_dialog.set_avatar(self.avatar_pixmap)
-            if self.background_path:
-                profile_dialog.set_background(self.background_path)
+            if hasattr(self, 'background_pixmap') and self.background_pixmap and not self.background_pixmap.isNull():
+                profile_dialog.set_background_pixmap(self.background_pixmap)
             
             profile_dialog.avatar_updated.connect(self.update_avatar)
             profile_dialog.exec()
@@ -486,7 +483,6 @@ class MainWindow(QMainWindow):
     
     def open_rules_window(self):
         if self.rules_window is None or not self.rules_window.isVisible():
-            from window_rules import RulesWindow
             self.rules_window = RulesWindow()
             if self.background_path:
                 self.rules_window.set_background(self.background_path)
@@ -496,18 +492,16 @@ class MainWindow(QMainWindow):
             self.rules_window.activateWindow()
     
     def open_chat_window(self):
-     """Открывает окно чата"""
-     if self.user_data:
-        from window_chat import ChatWindow
-        # Убираем третий аргумент (self), так как ChatWindow не принимает parent
-        self.chat_window = ChatWindow(self.user_data, self.db)
-        if self.background_path:
-            self.chat_window.set_background(self.background_path)
-        self.chat_window.back_button.clicked.connect(self.close_chat_and_return)
-        self.chat_window.show()
-        self.hide()
-     else:
-        print("Нет данных пользователя")
+        """Открывает окно чата"""
+        if self.user_data:
+            self.chat_window = ChatWindow(self.user_data, self.db)
+            if self.background_path:
+                self.chat_window.set_background(self.background_path)
+            self.chat_window.back_button.clicked.connect(self.close_chat_and_return)
+            self.chat_window.show()
+            self.hide()
+        else:
+            print("Нет данных пользователя")
     
     def close_chat_and_return(self):
         """Закрывает чат и возвращается в главное окно"""
@@ -515,6 +509,35 @@ class MainWindow(QMainWindow):
             self.chat_window.close()
             self.chat_window = None
         self.show()
+    
+    def open_users_window(self):
+        """Открывает окно со списком пользователей"""
+        if self.users_window is None or not self.users_window.isVisible():
+            self.users_window = UsersWindow(self.db, self)
+            if hasattr(self, 'background_pixmap') and self.background_pixmap and not self.background_pixmap.isNull():
+                self.users_window.set_background_pixmap(self.background_pixmap)
+            self.users_window.show()
+        else:
+            self.users_window.raise_()
+            self.users_window.activateWindow()
+    
+    def open_players_window(self):
+        """Открывает окно со списком игроков"""
+        if self.players_window is None or not self.players_window.isVisible():
+            # Проверяем, является ли пользователь администратором
+            # По умолчанию считаем, что пользователь с id = 1 - администратор
+            is_admin = (self.user_data and self.user_data.get('id') == 1)
+            
+            self.players_window = PlayersWindow(is_admin=is_admin, parent=self)
+            
+            # Передаем фон, если он есть
+            if hasattr(self, 'background_pixmap') and self.background_pixmap and not self.background_pixmap.isNull():
+                self.players_window.set_background_pixmap(self.background_pixmap)
+            
+            self.players_window.show()
+        else:
+            self.players_window.raise_()
+            self.players_window.activateWindow()
 
 
 class RegistrationForm(QWidget):

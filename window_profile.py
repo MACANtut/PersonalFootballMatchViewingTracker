@@ -1,3 +1,4 @@
+# window_profile.py
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout,
                                QLabel, QPushButton, QFileDialog,
                                QFrame, QMessageBox, QWidget)
@@ -13,6 +14,7 @@ class ProfileWindow(QDialog):
         self.user_data = user_data
         self.db = db
         self.background_path = None
+        self.background_pixmap = None
         self.avatar_pixmap = None
         self.setWindowTitle("Профиль")
         self.setFixedSize(500, 500)
@@ -258,7 +260,25 @@ class ProfileWindow(QDialog):
         content_layout.addWidget(self.schedule_button)
         
         main_layout.addWidget(self.content_frame)
+        
         self.setAutoFillBackground(True)
+    
+    def paintEvent(self, event):
+        """Переопределяем paintEvent для рисования фона"""
+        if self.background_pixmap and not self.background_pixmap.isNull():
+            painter = QPainter(self)
+            # Масштабируем изображение под размер окна
+            scaled_pixmap = self.background_pixmap.scaled(
+                self.size(),
+                Qt.KeepAspectRatioByExpanding,
+                Qt.SmoothTransformation
+            )
+            # Центрируем изображение
+            x = (self.width() - scaled_pixmap.width()) // 2
+            y = (self.height() - scaled_pixmap.height()) // 2
+            painter.drawPixmap(x, y, scaled_pixmap)
+        else:
+            super().paintEvent(event)
     
     def set_avatar(self, avatar_pixmap):
         """Устанавливает аватар из главного окна"""
@@ -295,32 +315,198 @@ class ProfileWindow(QDialog):
                     self.reg_date_value.setText("Ошибка загрузки")
     
     def set_background(self, image_path):
+        """Устанавливает фоновое изображение по пути к файлу"""
         try:
-            self.background_path = image_path
             pixmap = QPixmap(image_path)
             if not pixmap.isNull():
+                self.background_pixmap = pixmap
+                self.background_path = image_path
+                
+                # Делаем контентный фрейм полупрозрачным
                 self.content_frame.setStyleSheet("""
                     QFrame#contentFrame {
-                        background-color: rgba(240, 245, 240, 180);
+                        background-color: rgba(240, 245, 240, 200);
                         border: 2px solid rgba(155, 184, 155, 160);
                         border-radius: 10px;
                     }
                 """)
                 
-                palette = self.palette()
-                scaled_pixmap = pixmap.scaled(
-                    self.size(),
-                    Qt.KeepAspectRatioByExpanding,
-                    Qt.SmoothTransformation
-                )
-                palette.setBrush(QPalette.Window, QBrush(scaled_pixmap))
-                self.setPalette(palette)
+                # Делаем информационный фрейм полупрозрачным
+                for child in self.content_frame.findChildren(QFrame):
+                    if child.objectName() == "infoFrame":
+                        child.setStyleSheet("""
+                            QFrame#infoFrame {
+                                background-color: rgba(255, 255, 255, 220);
+                                border: 2px solid rgba(155, 184, 155, 160);
+                                border-radius: 8px;
+                            }
+                        """)
+                
+                # Делаем кнопки полупрозрачными
+                self.back_button.setStyleSheet("""
+                    QPushButton#backButton {
+                        background-color: rgba(143, 158, 143, 220);
+                        color: white;
+                        border: none;
+                        border-radius: 20px;
+                        font-size: 28px;
+                        font-weight: bold;
+                        padding: 0px;
+                        min-width: 40px;
+                        min-height: 40px;
+                        max-width: 40px;
+                        max-height: 40px;
+                    }
+                    QPushButton#backButton:hover {
+                        background-color: rgba(116, 135, 116, 240);
+                    }
+                """)
+                
+                self.change_club_button.setStyleSheet("""
+                    QPushButton#changeClubButton {
+                        background-color: rgba(107, 143, 107, 220);
+                        color: white;
+                        border: none;
+                        border-radius: 3px;
+                        padding: 5px 15px;
+                        font-weight: bold;
+                        font-size: 11px;
+                        min-width: 140px;
+                    }
+                    QPushButton#changeClubButton:hover {
+                        background-color: rgba(82, 115, 82, 240);
+                    }
+                """)
+                
+                self.schedule_button.setStyleSheet("""
+                    QPushButton#scheduleButton {
+                        background-color: rgba(107, 143, 107, 220);
+                        color: white;
+                        border: none;
+                        border-radius: 5px;
+                        padding: 10px;
+                        font-weight: bold;
+                        font-size: 14px;
+                        min-height: 35px;
+                    }
+                    QPushButton#scheduleButton:hover {
+                        background-color: rgba(82, 115, 82, 240);
+                    }
+                """)
+                
+                # Делаем achievement box полупрозрачным
+                self.achievements_box.setStyleSheet("""
+                    QLabel#achievementBox {
+                        background-color: rgba(232, 240, 232, 200);
+                        border: 2px dashed rgba(155, 184, 155, 160);
+                        border-radius: 5px;
+                        padding: 10px;
+                        color: #8f9e8f;
+                        font-style: italic;
+                        font-size: 11px;
+                    }
+                """)
+                
+                self.update()  # Перерисовываем окно
         except Exception as e:
             print(f"Ошибка установки фона: {e}")
     
+    def set_background_pixmap(self, pixmap):
+        """Устанавливает фоновое изображение из QPixmap"""
+        if pixmap and not pixmap.isNull():
+            self.background_pixmap = pixmap
+            
+            # Делаем контентный фрейм полупрозрачным
+            self.content_frame.setStyleSheet("""
+                QFrame#contentFrame {
+                    background-color: rgba(240, 245, 240, 200);
+                    border: 2px solid rgba(155, 184, 155, 160);
+                    border-radius: 10px;
+                }
+            """)
+            
+            # Делаем информационный фрейм полупрозрачным
+            for child in self.content_frame.findChildren(QFrame):
+                if child.objectName() == "infoFrame":
+                    child.setStyleSheet("""
+                        QFrame#infoFrame {
+                            background-color: rgba(255, 255, 255, 220);
+                            border: 2px solid rgba(155, 184, 155, 160);
+                            border-radius: 8px;
+                        }
+                    """)
+            
+            # Делаем кнопки полупрозрачными
+            self.back_button.setStyleSheet("""
+                QPushButton#backButton {
+                    background-color: rgba(143, 158, 143, 220);
+                    color: white;
+                    border: none;
+                    border-radius: 20px;
+                    font-size: 28px;
+                    font-weight: bold;
+                    padding: 0px;
+                    min-width: 40px;
+                    min-height: 40px;
+                    max-width: 40px;
+                    max-height: 40px;
+                }
+                QPushButton#backButton:hover {
+                    background-color: rgba(116, 135, 116, 240);
+                }
+            """)
+            
+            self.change_club_button.setStyleSheet("""
+                QPushButton#changeClubButton {
+                    background-color: rgba(107, 143, 107, 220);
+                    color: white;
+                    border: none;
+                    border-radius: 3px;
+                    padding: 5px 15px;
+                    font-weight: bold;
+                    font-size: 11px;
+                    min-width: 140px;
+                }
+                QPushButton#changeClubButton:hover {
+                    background-color: rgba(82, 115, 82, 240);
+                }
+            """)
+            
+            self.schedule_button.setStyleSheet("""
+                QPushButton#scheduleButton {
+                    background-color: rgba(107, 143, 107, 220);
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 10px;
+                    font-weight: bold;
+                    font-size: 14px;
+                    min-height: 35px;
+                }
+                QPushButton#scheduleButton:hover {
+                    background-color: rgba(82, 115, 82, 240);
+                }
+            """)
+            
+            # Делаем achievement box полупрозрачным
+            self.achievements_box.setStyleSheet("""
+                QLabel#achievementBox {
+                    background-color: rgba(232, 240, 232, 200);
+                    border: 2px dashed rgba(155, 184, 155, 160);
+                    border-radius: 5px;
+                    padding: 10px;
+                    color: #8f9e8f;
+                    font-style: italic;
+                    font-size: 11px;
+                }
+            """)
+            
+            self.update()  # Перерисовываем окно
+    
     def resizeEvent(self, event):
-        if self.background_path:
-            self.set_background(self.background_path)
+        """Обновляет фон при изменении размера окна"""
+        if self.background_pixmap and not self.background_pixmap.isNull():
+            self.update()
         super().resizeEvent(event)
     
     def load_avatar(self, event):
